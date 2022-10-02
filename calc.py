@@ -12,13 +12,16 @@ def playerTime(ptime):
     return datetime.timedelta(hours=t.tm_hour, minutes=t.tm_min, seconds=t.tm_sec).total_seconds()
 
 def getCurve(times):
+    "Given a collection of times in seconds, use all of them greater than 0 to fit a curve that can be used to calculate percentiles"
     ts_arr = ar([t for t in times if t > 0])
     return skewnorm(*skewnorm.fit(ts_arr))
 
 def getTimePercentile(time_sec, curve):
+    "Use the survival function of a curve and a time in seconds to calculate a value between 0 and 100, with 100 being the best."
     return 100 * curve.sf(time_sec)
 
 def graphCurve(curve, times, title='Probability Density Function Plot', output_file=None):
+    "Create a visualization of a curve produced by getCurve"
     import matplotlib.pyplot as plt
     import matplotlib.ticker as tick
     ts_arr = ar(sorted([t for t in times if t > 0]))
@@ -33,8 +36,8 @@ def graphCurve(curve, times, title='Probability Density Function Plot', output_f
     else:
         plt.savefig(output_file)
 
-# calculate totals for one race (dict of usernames -> time strings)
 def calculatePercentiles(race_dict):
+    "Calculate percentiles for all players in a dict mapping usernames to times expressed as HH:MM:SS strings, representing one async race"
     times = race_dict.values()
     curve = getCurve([playerTime(ptime) for ptime in times])
     ret = {}
@@ -42,17 +45,17 @@ def calculatePercentiles(race_dict):
         ret[name] = getTimePercentile(playerTime(ptime), curve)
     return ret
 
-# average a set of races, given percentile dicts from above
-def averageRaces(races):
+def averageRaces(races, default=0):
+    "Given a set of races which calculatePercentiles has already been called on, produce a new dictionary giving the average score across all of the races for each username. When a given name is missing from a race, use the default value instead."
     all_keys = set()
     for race in races:
         all_keys = all_keys | set(race.keys())
     ret = {}
     for name in all_keys:
-        ret[name] = sum([r.get(name, 0) for r in races])/len(races)
+        ret[name] = sum([r.get(name, default) for r in races])/len(races)
     return ret
 
-# if main, generate graphs for each race and output table with all percentiles and averages
+# if being called directly from the command line with json files describing races, all percentiles and averages (in the future: display as a nice table, also generate graphs of the curves)
 if __name__ == "__main__":
     racefiles = sys.argv[1:]
     races = []
