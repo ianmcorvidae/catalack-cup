@@ -75,6 +75,9 @@ def averageRaces(races, default=0):
         ret[name] = sum([r.get(name, default) for r in races])/len(races)
     return ret
 
+def prettifyFilename(name):
+    return re.sub('^races/', '', re.sub('\.json$', '', name))
+
 # if being called directly from the command line with json files describing races, all percentiles and averages (in the future: display as a nice table, also generate graphs of the curves)
 if __name__ == "__main__":
     default = 0
@@ -88,11 +91,11 @@ if __name__ == "__main__":
         #def graphCurve(curve, times, title='Probability Density Function Plot', output_file=None):
         curve = getCurve(list(races[i].values()))
         if curve is not None:
-            graphCurve(curve, list(races[i].values()), title=racefiles[i] + " PDF", output_file=racefiles[i] + '.png')
+            graphCurve(curve, list(races[i].values()), title=prettifyFilename(racefiles[i]) + " statistics", output_file=racefiles[i] + '.png')
         rs[i] = (racefiles[i], calculatePercentiles(races[i], curve), curve)
     average = averageRaces([r[1] for r in rs], default=default)
 
-    headers = ["#", "Player"] + [re.sub('^races/', '', re.sub('\.json$', '', r[0])) for r in rs] + ["Average"]
+    headers = ["#", "Player"] + [prettifyFilename(r[0]) for r in rs] + ["Average"]
     sorted_names = sorted(average.keys(), key=lambda x: 100 - average[x])
     table = [[sorted_names.index(name) + 1, name] + [str(round(rs[i][1].get(name, default),3)) + " (" + races[i].get(name, "") + ")" for i in range(len(rs))] + [round(average[name],3)] for name in sorted_names]
     print(tabulate(table, headers=headers))
