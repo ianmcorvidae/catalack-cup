@@ -4,7 +4,7 @@ import datetime
 import time
 import sys
 import json
-import pprint
+from tabulate import tabulate
 
 def playerTime(ptime):
     "Calculate a number of seconds from a HH:MM:SS time"
@@ -62,12 +62,16 @@ def averageRaces(races, default=0):
 
 # if being called directly from the command line with json files describing races, all percentiles and averages (in the future: display as a nice table, also generate graphs of the curves)
 if __name__ == "__main__":
+    default = 0
     racefiles = sys.argv[1:]
     races = []
     for rf in racefiles:
         with open(rf, 'r') as rfp:
             races.append(json.load(rfp))
-    rp = [calculatePercentiles(r) for r in races]
-    average = averageRaces(rp)
-    pprint.pprint(rp)
-    pprint.pprint(average)
+    rp = [(racefiles[i], calculatePercentiles(races[i])) for i in range(len(races))]
+    average = averageRaces([r[1] for r in rp], default=default)
+
+    headers = ["Player"] + [r[0] for r in rp] + ["Average"]
+    sorted_names = sorted(average.keys(), key=lambda x: 100 - average[x])
+    table = [[name] + [str(rp[i][1].get(name, default)) + " (" + races[i].get(name, "") + ")" for i in range(len(rp))] + [average[name]] for name in sorted_names]
+    print(tabulate(table, headers=headers))
