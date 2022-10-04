@@ -39,10 +39,15 @@ def graphCurve(curve, times, title='Probability Density Function Plot', output_f
 def calculatePercentiles(race_dict):
     "Calculate percentiles for all players in a dict mapping usernames to times expressed as HH:MM:SS strings, representing one async race"
     times = race_dict.values()
-    curve = getCurve([playerTime(ptime) for ptime in times])
+    if len(times) == 0:
+        return {}
+    curve = getCurve([playerTime(ptime) for ptime in times if ptime is not None and ptime != ""])
     ret = {}
     for name, ptime in race_dict.items():
-        ret[name] = getTimePercentile(playerTime(ptime), curve)
+        if ptime is not None and ptime != "":
+            ret[name] = getTimePercentile(playerTime(ptime), curve)
+        else:
+            ret[name] = 0
     return ret
 
 def averageRaces(races, default=0):
