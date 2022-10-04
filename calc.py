@@ -11,8 +11,16 @@ def playerTime(ptime):
     t = time.strptime(ptime, '%H:%M:%S')
     return datetime.timedelta(hours=t.tm_hour, minutes=t.tm_min, seconds=t.tm_sec).total_seconds()
 
+def fixTimes(times):
+    if len(times) > 0 and isinstance(times[0], str):
+        times = [playerTime(ptime) for ptime in times if ptime is not None and ptime != ""]
+    return [t for t in times if t > 0]
+
 def getCurve(times):
-    "Given a collection of times in seconds, use all of them greater than 0 to fit a curve that can be used to calculate percentiles"
+    "Given a collection of times in seconds or HH:MM:SS strings, use all of them greater than 0/non-None/non-empty to fit a curve that can be used to calculate percentiles"
+    times = fixTimes(times)
+    if len(times) == 0:
+        return None
     ts_arr = ar([t for t in times if t > 0])
     return skewnorm(*skewnorm.fit(ts_arr))
 
@@ -24,10 +32,15 @@ def graphCurve(curve, times, title='Probability Density Function Plot', output_f
     "Create a visualization of a curve produced by getCurve"
     import matplotlib.pyplot as plt
     import matplotlib.ticker as tick
+    import numpy as np
+    times = fixTimes(times)
     ts_arr = ar(sorted([t for t in times if t > 0]))
     fix, ax = plt.subplots(1,1)
     ax.xaxis.set_major_formatter(tick.FuncFormatter(lambda x, pos: (datetime.datetime.min + datetime.timedelta(seconds=x)).strftime("%H:%M:%S")))
-    ax.plot(ts_arr, curve.pdf(ts_arr), 'r-', lw=5, alpha=0.6, label='PDF')
+    # Graph an evenly-spaced set of times for the PDF line, minimum 10 points
+    pdf_arr = np.linspace(min(times), max(times), max(len(times), 10))
+    ax.plot(pdf_arr, curve.pdf(pdf_arr), 'r-', lw=5, alpha=0.6, label='PDF')
+    # Also graph a histogram of the actual times
     ax.hist(ts_arr, density=True, alpha=0.2)
     ax.legend(loc='best', frameon=False)
     plt.title(title)
@@ -36,13 +49,14 @@ def graphCurve(curve, times, title='Probability Density Function Plot', output_f
     else:
         plt.savefig(output_file)
 
-def calculatePercentiles(race_dict):
+def calculatePercentiles(race_dict, curve=None):
     "Calculate percentiles for all players in a dict mapping usernames to times expressed as HH:MM:SS strings, representing one async race"
     ret = {}
     times = [ptime for ptime in race_dict.values() if ptime is not None and ptime != ""]
     if len(times) == 0:
         return ret
-    curve = getCurve([playerTime(ptime) for ptime in times])
+    if curve is None:
+        curve = getCurve(times)
     for name, ptime in race_dict.items():
         if ptime is not None and ptime != "":
             ret[name] = getTimePercentile(playerTime(ptime), curve)
@@ -68,10 +82,16 @@ if __name__ == "__main__":
     for rf in racefiles:
         with open(rf, 'r') as rfp:
             races.append(json.load(rfp))
-    rp = [(racefiles[i], calculatePercentiles(races[i])) for i in range(len(races))]
-    average = averageRaces([r[1] for r in rp], default=default)
+    rs = [None for i in races]
+    for i in range(len(races)):
+        #def graphCurve(curve, times, title='Probability Density Function Plot', output_file=None):
+        curve = getCurve(list(races[i].values()))
+        if curve is not None:
+            graphCurve(curve, list(races[i].values()), title=racefiles[i] + " PDF", output_file=racefiles[i] + '.png')
+        rs[i] = (racefiles[i], calculatePercentiles(races[i], curve), curve)
+    average = averageRaces([r[1] for r in rs], default=default)
 
-    headers = ["#", "Player"] + [r[0] for r in rp] + ["Average"]
+    headers = ["#", "Player"] + [r[0] for r in rs] + ["Average"]
     sorted_names = sorted(average.keys(), key=lambda x: 100 - average[x])
-    table = [[sorted_names.index(name) + 1, name] + [str(round(rp[i][1].get(name, default),3)) + " (" + races[i].get(name, "") + ")" for i in range(len(rp))] + [round(average[name],3)] for name in sorted_names]
+    table = [[sorted_names.index(name) + 1, name] + [str(round(rs[i][1].get(name, default),3)) + " (" + races[i].get(name, "") + ")" for i in range(len(rs))] + [round(average[name],3)] for name in sorted_names]
     print(tabulate(table, headers=headers))
