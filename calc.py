@@ -71,7 +71,7 @@ if __name__ == "__main__":
     rp = [(racefiles[i], calculatePercentiles(races[i])) for i in range(len(races))]
     average = averageRaces([r[1] for r in rp], default=default)
 
-    headers = ["Player"] + [r[0] for r in rp] + ["Average"]
+    headers = ["#", "Player"] + [r[0] for r in rp] + ["Average"]
     sorted_names = sorted(average.keys(), key=lambda x: 100 - average[x])
-    table = [[name] + [str(round(rp[i][1].get(name, default),3)) + " (" + races[i].get(name, "") + ")" for i in range(len(rp))] + [round(average[name],3)] for name in sorted_names]
+    table = [[sorted_names.index(name) + 1, name] + [str(round(rp[i][1].get(name, default),3)) + " (" + races[i].get(name, "") + ")" for i in range(len(rp))] + [round(average[name],3)] for name in sorted_names]
     print(tabulate(table, headers=headers))
