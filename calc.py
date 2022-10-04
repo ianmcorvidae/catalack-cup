@@ -4,6 +4,7 @@ import datetime
 import time
 import sys
 import json
+import re
 from tabulate import tabulate
 
 def playerTime(ptime):
@@ -91,7 +92,7 @@ if __name__ == "__main__":
         rs[i] = (racefiles[i], calculatePercentiles(races[i], curve), curve)
     average = averageRaces([r[1] for r in rs], default=default)
 
-    headers = ["#", "Player"] + [r[0] for r in rs] + ["Average"]
+    headers = ["#", "Player"] + [re.sub('^races/', '', re.sub('\.json$', '', r[0])) for r in rs] + ["Average"]
     sorted_names = sorted(average.keys(), key=lambda x: 100 - average[x])
     table = [[sorted_names.index(name) + 1, name] + [str(round(rs[i][1].get(name, default),3)) + " (" + races[i].get(name, "") + ")" for i in range(len(rs))] + [round(average[name],3)] for name in sorted_names]
     print(tabulate(table, headers=headers))
