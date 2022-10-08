@@ -17,11 +17,20 @@ def fixTimes(times):
         times = [playerTime(ptime) for ptime in times if ptime is not None and ptime != ""]
     return [t for t in times if t > 0]
 
+class FakeCurve:
+    def __init__(self, default=0.5):
+        self.default = default
+
+    def sf(self, time_sec):
+        return self.default
+
 def getCurve(times):
-    "Given a collection of times in seconds or HH:MM:SS strings, use all of them greater than 0/non-None/non-empty to fit a curve that can be used to calculate percentiles"
+    "Given a collection of times in seconds or HH:MM:SS strings, use all of them greater than 0/non-None/non-empty to fit a curve that can be used to calculate percentiles. Return a fake curve that always gives a 50 if there's only one finisher, though."
     times = fixTimes(times)
     if len(times) == 0:
         return None
+    elif len(times) == 1:
+        return FakeCurve()
     ts_arr = ar([t for t in times if t > 0])
     return skewnorm(*skewnorm.fit(ts_arr))
 
@@ -88,14 +97,15 @@ if __name__ == "__main__":
             races.append(json.load(rfp))
     rs = [None for i in races]
     for i in range(len(races)):
-        #def graphCurve(curve, times, title='Probability Density Function Plot', output_file=None):
         curve = getCurve(list(races[i].values()))
-        if curve is not None:
+        if curve is not None and len(races[i].values()) > 1:
             graphCurve(curve, list(races[i].values()), title=prettifyFilename(racefiles[i]) + " statistics", output_file=racefiles[i] + '.png')
         rs[i] = (racefiles[i], calculatePercentiles(races[i], curve), curve)
     average = averageRaces([r[1] for r in rs], default=default)
 
     headers = ["#", "Player"] + [prettifyFilename(r[0]) for r in rs] + ["Average"]
     sorted_names = sorted(average.keys(), key=lambda x: 100 - average[x])
-    table = [[sorted_names.index(name) + 1, name] + [str(round(rs[i][1].get(name, default),3)) + " (" + races[i].get(name, "") + ")" for i in range(len(rs))] + [round(average[name],3)] for name in sorted_names]
+    table = [[sorted_names.index(name) + 1, name] + [str(round(rs[i][1].get(name, default),3)) + " (" + races[i].get(name, "") + ")" for i in range(len(rs))] for name in sorted_names]
+    if len(races) > 1:
+        table = [table[i] + [round(average[sorted_names[i]],3)] for i in range(len(sorted_names))]
     print(tabulate(table, headers=headers))
