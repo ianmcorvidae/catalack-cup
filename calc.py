@@ -44,14 +44,18 @@ def graphCurve(curve, times, title='Probability Density Function Plot', output_f
     import matplotlib.ticker as tick
     import numpy as np
     times = fixTimes(times)
-    ts_arr = ar(sorted([t for t in times if t > 0]))
+    ts = sorted([t for t in times if t > 0])
+    ts_arr = ar(ts)
     fix, ax = plt.subplots(1,1)
     ax.xaxis.set_major_formatter(tick.FuncFormatter(lambda x, pos: (datetime.datetime.min + datetime.timedelta(seconds=x)).strftime("%H:%M:%S")))
     # Graph an evenly-spaced set of times for the PDF line, minimum 10 points
-    pdf_arr = np.linspace(min(times), max(times), max(len(times), 10))
+    pdf_arr = ar(sorted(ts + [curve.isf(0.999999)] + [curve.isf(x/100) for x in range(90,0,-10)] + [curve.isf(0.000001)]))
     ax.plot(pdf_arr, curve.pdf(pdf_arr), 'r-', lw=5, alpha=0.6, label='PDF')
     # Also graph a histogram of the actual times
     ax.hist(ts_arr, density=True, alpha=0.2)
+    (xmin, xmax) = ax.get_xlim()
+    if xmin < 0:
+        ax.set_xlim(left=0, right=xmax)
     ax.legend(loc='best', frameon=False)
     plt.title(title)
     if output_file is None:
@@ -99,6 +103,8 @@ if __name__ == "__main__":
     for i in range(len(races)):
         curve = getCurve(list(races[i].values()))
         if curve is not None and len(races[i].values()) > 1:
+            print(prettifyFilename(racefiles[i]) + ' percentiles:')
+            [print("\t", '{:3d}'.format(int(round(x*100,3))), (datetime.datetime.min + datetime.timedelta(seconds=curve.isf(x))).strftime("%H:%M:%S")) for x in [0.999999, 0.75, 0.5, 0.25, 0.000001]]
             graphCurve(curve, list(races[i].values()), title=prettifyFilename(racefiles[i]) + " statistics", output_file=racefiles[i] + '.png')
         rs[i] = (racefiles[i], calculatePercentiles(races[i], curve), curve)
     average = averageRaces([r[1] for r in rs], default=default)
