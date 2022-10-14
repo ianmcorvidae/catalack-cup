@@ -49,7 +49,7 @@ def graphCurve(curve, times, title='Probability Density Function Plot', output_f
     fix, ax = plt.subplots(1,1)
     ax.xaxis.set_major_formatter(tick.FuncFormatter(lambda x, pos: (datetime.datetime.min + datetime.timedelta(seconds=x)).strftime("%H:%M:%S")))
     # Graph an evenly-spaced set of times for the PDF line, minimum 10 points
-    pdf_arr = ar(sorted(ts + [curve.isf(0.999999)] + [curve.isf(x/100) for x in range(95,0,-5)] + [curve.isf(0.000001)]))
+    pdf_arr = ar(sorted(ts + [curve.isf(0.999999)] + [curve.isf(x/100) for x in range(99,0,-1)] + [curve.isf(0.000001)]))
     ax.plot(pdf_arr, curve.pdf(pdf_arr), 'r-', lw=5, alpha=0.6, label='PDF')
     # Also graph a histogram of the actual times
     ax.hist(ts_arr, density=True, alpha=0.2)
@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
     headers = ["#", "Player"] + [prettifyFilename(r[0]) for r in rs] + ["Average"]
     sorted_names = sorted(average.keys(), key=lambda x: 100 - average[x])
-    table = [[sorted_names.index(name) + 1, name] + [str(round(rs[i][1].get(name, default),3)) + " (" + races[i].get(name, "") + ")" for i in range(len(rs))] for name in sorted_names]
+    table = [[sorted_names.index(name) + 1, name] + [str(round(rs[i][1].get(name, default),5)) + " (" + races[i].get(name, "") + ")" for i in range(len(rs))] for name in sorted_names]
     if len(races) > 1:
-        table = [table[i] + [round(average[sorted_names[i]],3)] for i in range(len(sorted_names))]
+        table = [table[i] + [round(average[sorted_names[i]],5)] for i in range(len(sorted_names))]
     print(tabulate(table, headers=headers))
